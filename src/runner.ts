@@ -7,6 +7,6 @@ export default async function runner() {
     join(__dirname, "..", "spec/foo.js"),
     join(__dirname, "..", "/spec/foo.ts"),
   ];
-  const options = {};
+  const options = { dry: true };
   return jscodeshift(transformPath, paths, options);
 }
