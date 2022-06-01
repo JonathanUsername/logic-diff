@@ -1,8 +1,12 @@
 import { run as jscodeshift } from "jscodeshift/src/Runner";
+import { join } from "path";
 
-(async function main() {
-  const transformPath = "./transform.ts";
-  const paths = ["../spec/foo.js", "../spec/foo.ts"];
-  const res = await jscodeshift(transformPath, paths, options);
-  console.log(res);
-})();
+export default async function runner() {
+  const transformPath = join(__dirname, "transform.ts");
+  const paths = [
+    join(__dirname, "..", "spec/foo.js"),
+    join(__dirname, "..", "/spec/foo.ts"),
+  ];
+  const options = {};
+  return jscodeshift(transformPath, paths, options);
+}

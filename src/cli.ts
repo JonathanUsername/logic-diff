@@ -1,3 +1,6 @@
 import runner from "./runner";
 
-runner();
+(async function main() {
+  const res = await runner();
+  console.log(res);
+})();
