@@ -488,6 +488,11 @@
   resolved "https://registry.yarnpkg.com/@types/node/-/node-17.0.38.tgz#f8bb07c371ccb1903f3752872c89f44006132947"
   integrity sha512-5jY9RhV7c0Z4Jy09G+NIDTsCZ5G0L5n+Z+p+Y7t5VJHM30bgwzSjVtlcBxqAj+6L/swIlvtOSzr8rBk/aNyV2g==
 
+"@ungap/structured-clone@^1.0.1":
+  version "1.0.1"
+  resolved "https://registry.yarnpkg.com/@ungap/structured-clone/-/structured-clone-1.0.1.tgz#549ce746c163d0869a61cfdabafe625a13ab5d0f"
+  integrity sha512-zKVyTt6rELvPXYwcVPTJcPFtY0AckN5A7xWuc7owBqR0FdtuDYhE9MZZUi6IY1kZUQFSXV1B3UOOIyLkVHYd2w==
+
 acorn-walk@^8.1.1:
   version "8.2.0"
   resolved "https://registry.yarnpkg.com/acorn-walk/-/acorn-walk-8.2.0.tgz#741210f2e2426454508853a2f44d0ab83b7f69c1"

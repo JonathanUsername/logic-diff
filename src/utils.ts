@@ -2,6 +2,7 @@ import _ from "lodash";
 import { ASTPath, Node, SourceLocation } from "jscodeshift";
 import { eachField } from "ast-types";
 import crypto from "crypto";
+import structuredClone from "@ungap/structured-clone";
 
 type AstNode = ASTPath<Node>["node"];
 interface CleanLocation {
@@ -18,32 +19,20 @@ const isLocation = (o: any): o is SourceLocation => {
   return locationKeys.every((key) => objectKeys.includes(key));
 };
 
-const unCircularLoc = <T extends AstNode>(
-  o: T,
-  loc?: SourceLocation
-): [T, CleanLocation] => {
-  let foundLoc = loc;
+const unCircularLoc = <T extends AstNode>(o: T): T => {
   if (!o) {
-    return [o, foundLoc];
+    return o;
   }
 
-  const location = o.loc;
-  if (location) {
-    const { start, end } = location;
-    delete o["loc"];
-    foundLoc = { start, end };
-  }
+  delete o["tokens"];
 
   Object.entries(o).forEach(([k, v]) => {
     if (typeof v === "object") {
-      const [out, loc] = unCircularLoc(v, foundLoc);
+      const out = unCircularLoc(v);
       o[k] = out;
-      if (!foundLoc) {
-        foundLoc = loc;
-      }
     }
   });
-  return [o, foundLoc];
+  return { ...o };
 };
 
 const omitNested = <T extends Object>(obj: T, paths: string[]): T => {
@@ -76,7 +65,7 @@ const removeIrrelevantFields = <T extends Object>(obj: T): T => {
     "start",
     "end",
     "extra",
-    // "loc",
+    "loc",
     "regex",
     // Comments
     "trailingComments",
@@ -99,29 +88,25 @@ export type NodeWithId = AstNode & {
 const cleanNode = (node: AstNode) => {
   let cleanNode = {};
   eachField(node, (name, value) => {
-    let cleanValue, loc;
+    let cleanValue;
     if (typeof value === "object") {
       // Copy object
-      [cleanValue, loc] = unCircularLoc({ ...value });
+      cleanValue = unCircularLoc({ ...value });
     } else {
-      [cleanValue, loc] = unCircularLoc(value);
+      cleanValue = unCircularLoc(value);
     }
 
     cleanNode[name] = cleanValue;
-    if (!node.loc) {
-      // @ts-ignore
-      cleanNode.loc = loc;
-    }
   });
   return removeIrrelevantFields(cleanNode);
 };
 
 export const getNodeWithId = (nodePath: ASTPath<Node>): NodeWithId => {
-  if (nodePath.node.type === "Program") {
-    console.log(nodePath.node.body[0]);
-  }
-  const originalNode = { ...nodePath.node };
-  const node = cleanNode(nodePath.node);
+  // if (nodePath.node.type === "Program") {
+  //   console.log(Object.keys(nodePath.node));
+  // }
+  const clonedNode = structuredClone(nodePath.node);
+  const node = cleanNode(clonedNode);
 
   const debugStr = JSON.stringify(node, null, 2);
   const id = getIdFromObj(node);
@@ -131,7 +116,7 @@ export const getNodeWithId = (nodePath: ASTPath<Node>): NodeWithId => {
   const parentId = getIdFromObj(parentNode);
 
   return {
-    ...originalNode,
+    ...nodePath.node,
     debugStr,
     id,
     parentId,

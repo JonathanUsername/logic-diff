@@ -94,14 +94,14 @@ export default async (fileInfo: FileInfo, api: API, options: Options) => {
     return result;
   };
 
+  const uniqStr = (arr: string[]) => [...new Set([...arr])];
+
   const mapLocs = (fileName: string, arr: NodeWithId[]) =>
-    arr
-      .filter((i) => !!i.loc && !(Object.keys(i.loc).length === 0))
-      .map(
-        (i) =>
-          console.log(i.loc) ||
-          `\n${fileName}:${i.loc.start.line}:${i.loc.start.column}`
-      );
+    uniqStr(
+      arr
+        .filter((i) => !!i.loc && !(Object.keys(i.loc).length === 0))
+        .map((i) => `\n${fileName}:${i.loc.start.line}:${i.loc.start.column}`)
+    );
 
   const differences = findDifferenceInMaps(astIdsMap, comaprisonAstIdsMap);
   const file1Differences = differences.map1;
@@ -120,7 +120,7 @@ export default async (fileInfo: FileInfo, api: API, options: Options) => {
   } else {
     // console.log(file2Differences);
     api.report(
-      `File 2 differences: ${mapLocs(originalPath, file2Differences)}`
+      `File 2 differences: ${mapLocs(comparisonPath, file2Differences)}`
     );
   }
 
