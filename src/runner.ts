@@ -1,17 +1,25 @@
 import { run as jscodeshift } from "jscodeshift/src/Runner";
-import { join } from "path";
+import path, { join, relative, resolve } from "path";
+import { UserOptions } from "./cli";
+import glob from "glob";
 
-export default async function runner() {
+export type Options = UserOptions & {
+  dry: true;
+  parser: "ts";
+  verbose: number;
+};
+
+export default async function runner(userOptions: UserOptions) {
   const transformPath = join(__dirname, "transform.ts");
-  const paths = [join(__dirname, "..", "/spec/foo.ts")];
-  const options = {
+  const paths = glob
+    .sync(userOptions.path)
+    .map((relativePath) => resolve(relativePath));
+  console.log(paths);
+  const options: Options = {
+    ...userOptions,
     dry: true,
-    ignoreExtension: false,
-    wasJs: true,
     verbose: 2,
     parser: "ts",
-    compareCommit: "9a1adc39117b7ead41a1d38173b22cdc224faefa",
-    debugSrc: join(__dirname, "..", "/spec/foo2.ts"),
   };
   return jscodeshift(transformPath, paths, options);
 }
