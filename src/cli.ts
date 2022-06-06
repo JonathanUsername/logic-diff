@@ -1,36 +1,55 @@
 import runner from "./runner";
-import { parse } from "ts-command-line-args";
+import yargs from "yargs";
 
-export interface GitOptions {
-  compareCommit: string;
-  wasJs?: boolean;
+export type UserOptions = {
   path: string;
-}
+  compareCommit?: string;
+  ext?: string;
+  srcFilePath?: string;
+};
 
-export interface FileOptions {
-  srcFilePath: string;
-  wasJs?: boolean;
-  path: string;
-}
+let argv = yargs(process.argv.slice(2))
+  .usage("Usage: <path> [commitSha] --srcFilePath [srcFilePath]")
+  .alias("f", "srcFilepath")
+  .describe("f", "Use a file to diff against instead of a commit")
+  .command("$0", "Diff all files, given a path, recursively.", (yargs) => {
+    yargs.positional("path", {
+      describe: "A glob to start the runner with, e.g. src/**/*.ts",
+      require: true,
+    });
+    yargs.positional("commitSha", {
+      describe: "The commit to diff all files against",
+      require: false,
+    });
+    yargs.option("ext", {
+      type: "string",
+      describe: `If the file you want to compare against had a different extension, use this to specify it, e.g. 'js'`,
+      alias: "x",
+      require: false,
+    });
+    yargs.option("verbose", {
+      type: "number",
+      describe: `Passed to jscodeshift`,
+      alias: "v",
+      require: false,
+    });
+    yargs.demandCommand(1);
+  })
+  .help()
+  .parseSync();
 
-export type UserOptions = GitOptions | FileOptions;
+const {
+  _: [path, commitSha],
+  ext,
+  srcFilePath,
+} = argv;
 
-const args = parse<UserOptions>(
-  {
-    // @ts-ignore
-    path: String,
-    wasJs: { type: Boolean, optional: true },
-    compareCommit: { type: String, optional: true },
-    srcFilePath: { type: String, optional: true },
-  },
-  {
-    headerContentSections: [
-      {
-        header: `Check for logic changes in files. Ignoring typescript types.`,
-      },
-    ],
-  }
-);
+const args = {
+  path,
+  ext,
+  compareCommit: commitSha,
+  srcFilePath,
+} as UserOptions;
 
 // Debug values:
 // compareCommit: "9a1adc39117b7ead41a1d38173b22cdc224faefa",

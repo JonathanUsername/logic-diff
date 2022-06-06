@@ -18,17 +18,16 @@
   "license": "ISC",
   "dependencies": {
     "@types/lodash": "^4.14.182",
-    "@ungap/structured-clone": "^1.0.1",
-    "diff-trees": "^0.4.2",
+    "@types/yargs": "^17.0.10",
     "glob": "^8.0.3",
     "jscodeshift": "^0.13.1",
     "lodash": "^4.17.21",
     "pkg": "^5.7.0",
     "rimraf": "^3.0.2",
     "simple-git": "^3.7.1",
-    "ts-command-line-args": "^2.3.1",
     "ts-node": "^10.8.0",
-    "typescript": "^4.7.2"
+    "typescript": "^4.7.2",
+    "yargs": "^17.5.1"
   },
   "devDependencies": {
     "@types/jscodeshift": "^0.11.5",

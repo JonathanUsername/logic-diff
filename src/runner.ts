@@ -1,12 +1,12 @@
 import { run as jscodeshift } from "jscodeshift/src/Runner";
-import path, { join, relative, resolve } from "path";
+import { join, resolve } from "path";
 import { UserOptions } from "./cli";
 import glob from "glob";
 
 export type Options = UserOptions & {
   dry: true;
   parser: "ts";
-  verbose: number;
+  verbose?: number;
 };
 
 export default async function runner(userOptions: UserOptions) {
@@ -18,8 +18,8 @@ export default async function runner(userOptions: UserOptions) {
   const options: Options = {
     ...userOptions,
     dry: true,
-    verbose: 2,
     parser: "ts",
   };
-  return jscodeshift(transformPath, paths, options);
+  const { stats } = await jscodeshift(transformPath, paths, options);
+  const differenceLocs = Object.keys(stats);
 }

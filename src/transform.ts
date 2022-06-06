@@ -1,19 +1,15 @@
 import _ from "lodash";
 import { extname, relative } from "path";
-import { FileInfo, API, ASTPath, Node, Collection } from "jscodeshift";
+import { FileInfo, API, Collection } from "jscodeshift";
 import simpleGit from "simple-git";
 import { readFileSync } from "fs";
 import * as utils from "./utils";
-import { GitOptions, FileOptions } from "./cli";
+import { UserOptions } from "./cli";
 
 const stripExtension = (path: string) =>
   path.replace(RegExp(`${extname(path)}$`), "");
 
-export default async (
-  fileInfo: FileInfo,
-  api: API,
-  options: GitOptions & FileOptions
-) => {
+export default async (fileInfo: FileInfo, api: API, options: UserOptions) => {
   let { path } = fileInfo;
   const originalPath = path;
 
@@ -27,8 +23,8 @@ export default async (
     const gitRoot = await simpleGit().revparse(["--show-toplevel"]);
     let gitRelativePath = relative(gitRoot, path);
 
-    if (options.wasJs) {
-      gitRelativePath = stripExtension(gitRelativePath) + ".js";
+    if (options.ext) {
+      gitRelativePath = stripExtension(gitRelativePath) + "." + options.ext;
     }
 
     comparisonPath = `${options.compareCommit}:${gitRelativePath}`;
