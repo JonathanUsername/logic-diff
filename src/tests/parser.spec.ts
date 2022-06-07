@@ -1,10 +1,20 @@
-import parse, { cleanNode } from "../parser";
+import parse, { DiffType } from "../parser";
 
-const debugDifference = (node) => cleanNode(node);
+const getParsedDifferences = (newSrc: string, oldSrc: string) => {
+  const differences = parse(newSrc, oldSrc);
+
+  return (
+    differences
+      // Simplify the test, just look at the actual differences
+      .filter(({ type }) => [DiffType.Added, DiffType.Removed].includes(type))
+      // Trim the whitespace for readability
+      .map((i) => ({ ...i, raw: i.raw.trim() }))
+  );
+};
 
 describe("parser", () => {
   it("should handle additions", () => {
-    const differences = parse(
+    const differences = getParsedDifferences(
       `
         const bar = 5;
         const foo = 6;
@@ -13,18 +23,13 @@ describe("parser", () => {
         const bar = 5;
         `
     );
-    expect(differences.map1.length).toEqual(1);
-    expect(differences.map1[0]).toEqual(
-      expect.objectContaining({
-        type: "VariableDeclaration",
-        kind: "const",
-      })
-    );
-    expect(differences.map2.length).toEqual(0);
+    expect(differences).toEqual([
+      { type: DiffType.Added, raw: "const foo = 6;" },
+    ]);
   });
 
   it("should handle removals", () => {
-    const differences = parse(
+    const differences = getParsedDifferences(
       `
         const bar = 5;
         `,
@@ -33,18 +38,13 @@ describe("parser", () => {
         const foo = 6;
         `
     );
-    expect(differences.map1.length).toEqual(0);
-    expect(differences.map2.length).toEqual(1);
-    expect(differences.map2[0]).toEqual(
-      expect.objectContaining({
-        type: "VariableDeclaration",
-        kind: "const",
-      })
-    );
+    expect(differences).toEqual([
+      { type: DiffType.Removed, raw: "const foo = 6;" },
+    ]);
   });
 
-  it("should handle simple logic differences", () => {
-    const differences = parse(
+  it("should handle value differences", () => {
+    const differences = getParsedDifferences(
       `
         const bar = 5;
         `,
@@ -52,24 +52,33 @@ describe("parser", () => {
         const bar = 7;
         `
     );
-    expect(differences.map1.length).toEqual(1);
-    expect(differences.map1[0]).toEqual(
-      expect.objectContaining({
-        type: "VariableDeclaration",
-        kind: "const",
-      })
+    expect(differences).toEqual([
+      { type: DiffType.Removed, raw: "const bar = 7;" },
+      { type: DiffType.Added, raw: "const bar = 5;" },
+    ]);
+  });
+
+  it("should disregard whitespace", () => {
+    const differences = getParsedDifferences(
+      `
+
+
+
+
+           const   bar  =   5;
+
+
+
+        `,
+      `
+        const bar = 5;
+        `
     );
-    expect(differences.map2.length).toEqual(1);
-    expect(differences.map2[0]).toEqual(
-      expect.objectContaining({
-        type: "VariableDeclaration",
-        kind: "const",
-      })
-    );
+    expect(differences).toEqual([]);
   });
 
   it("should ignore type annotations and declarations", () => {
-    const differences = parse(
+    const differences = getParsedDifferences(
       `
         type Bar = number;
         const bar: Bar = 7;
@@ -78,12 +87,11 @@ describe("parser", () => {
         const bar = 7;
         `
     );
-    expect(differences.map1).toEqual([]);
-    expect(differences.map2).toEqual([]);
+    expect(differences).toEqual([]);
   });
 
   it("should ignore type annotations and declarations unless the value has changed", () => {
-    const differences = parse(
+    const differences = getParsedDifferences(
       `
         type Bar = number;
         const bar: Bar = 5;
@@ -92,22 +100,14 @@ describe("parser", () => {
         const bar = 7;
         `
     );
-    expect(differences.map1).toEqual([
-      expect.objectContaining({
-        type: "VariableDeclaration",
-        kind: "const",
-      }),
-    ]);
-    expect(differences.map2).toEqual([
-      expect.objectContaining({
-        type: "VariableDeclaration",
-        kind: "const",
-      }),
+    expect(differences).toEqual([
+      { type: DiffType.Removed, raw: "const bar = 7;" },
+      { type: DiffType.Added, raw: "const bar = 5;" },
     ]);
   });
 
   it("should ignore exported types", () => {
-    const differences = parse(
+    const differences = getParsedDifferences(
       `
         export type Bar = number;
         const bar: Bar = 7;
@@ -116,12 +116,11 @@ describe("parser", () => {
         const bar = 7;
         `
     );
-    expect(differences.map1).toEqual([]);
-    expect(differences.map2).toEqual([]);
+    expect(differences).toEqual([]);
   });
 
   it("should not ignore exported declarations", () => {
-    const differences = parse(
+    const differences = getParsedDifferences(
       `
         export const bar: Bar = 7;
         `,
@@ -129,42 +128,42 @@ describe("parser", () => {
         const bar = 7;
         `
     );
-    expect(differences.map1).toEqual([
-      expect.objectContaining({
-        type: "ExportNamedDeclaration",
-      }),
-    ]);
-    // Simple declaration AST node now missing
-    expect(differences.map2).toEqual([
-      expect.objectContaining({
-        type: "VariableDeclaration",
-      }),
+    expect(differences).toEqual([
+      { type: DiffType.Removed, raw: "const bar = 7;" },
+      { type: DiffType.Added, raw: "export const bar = 7;" },
     ]);
   });
 
-  it.only("should not ignore exported functions", () => {
-    const differences = parse(
+  it("should not ignore exported functions", () => {
+    const differences = getParsedDifferences(
       `
         export default function() {
-          return 5
+          type Foo = number;
+          return 5;
         };
         `,
       `
         export default function () {
-          return 6
+          return 6;
         };
         `
     );
-    expect(differences.map1).toEqual([
-      expect.objectContaining({
-        type: "ReturnStatement",
-      }),
+    expect(differences).toEqual([
+      { type: DiffType.Removed, raw: "return 6;" },
+      { type: DiffType.Added, raw: "return 5;" },
     ]);
-    // Simple declaration AST node now missing
-    expect(differences.map2).toEqual([
-      expect.objectContaining({
-        type: "ReturnStatement",
-      }),
-    ]);
+  });
+
+  it("should ignore comments", () => {
+    const differences = getParsedDifferences(
+      `
+        // Another comment
+        const foo = 5
+        `,
+      `
+        const foo = 5; // Comment
+        `
+    );
+    expect(differences).toEqual([]);
   });
 });

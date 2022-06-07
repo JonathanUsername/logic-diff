@@ -1,10 +1,14 @@
 import getParser from "jscodeshift/src/getParser";
 import jscodeshift from "jscodeshift/src/core";
-import { Collection, ASTPath, Node } from "jscodeshift";
-import get from "lodash.get";
-import { eachField } from "ast-types";
-import crypto from "crypto";
-import * as utils from "./utils";
+import {
+  Collection,
+  ASTPath,
+  Node,
+  JSCodeshift,
+  ExportDeclaration,
+} from "jscodeshift";
+import * as Diff from "diff";
+import prettier from "prettier";
 
 export type NodeWithId = AstNode & {
   id: string;
@@ -12,127 +16,112 @@ export type NodeWithId = AstNode & {
 export type AstNode = ASTPath<Node>["node"];
 export type NodeMap = Map<string, NodeWithId>;
 
-const removeTokensField = <T extends AstNode>(o: T): T => {
-  if (!o) {
-    return o;
-  }
+interface TSExport extends ExportDeclaration {
+  exportKind: string;
+}
 
-  delete o["tokens"];
+interface TSAnnotatedNode extends Node {
+  typeAnnotation?: Node;
+}
 
-  Object.entries(o).forEach(([k, v]) => {
-    if (typeof v === "object") {
-      const out = removeTokensField(v);
-      o[k] = out;
+const isTSAnnotatedNode = (node: any): node is TSAnnotatedNode =>
+  "typeAnnotation" in node;
+
+const isTSExport = (node: any): node is TSExport =>
+  "exportKind" in node && node.exportKind === "type";
+
+function getCleanedSource(collection: Collection<any>, j: JSCodeshift): string {
+  // First traverse and remove some tricky references
+  collection.find(j.Node).forEach((nodePath) => {
+    // First delete type annotations, which are a non-standard AST property
+    if (isTSAnnotatedNode(nodePath.node)) {
+      delete nodePath.node.typeAnnotation;
     }
+
+    // Then delete comments
+    delete nodePath.node.comments;
   });
-  return o;
-};
 
-const removeUncomparedFields = <T extends Object>(obj: T): T => {
-  if (!obj) {
-    return obj;
-  }
-  Object.entries(obj).forEach(([key, value]) => {
-    if (!value) {
-      return;
-    }
-    if (Array.isArray(value)) {
-      obj[key] = value.map(removeUncomparedFields);
-    }
-    if (typeof value === "object") {
-      obj[key] = removeUncomparedFields(value);
-    }
-  });
-  return utils.omitNested(obj, [
-    // Location etc.
-    "start",
-    "end",
-    "extra",
-    "loc",
-    "regex",
-    "source",
-    // Comments
-    "trailingComments",
-    "leadingComments",
-    "comments",
-    // Type annotations
-    "typeAnnotation",
-    "declaration", // Not sure about this
-  ]);
-};
+  // Now prune all TS-related nodes
+  collection
+    .find(j.Node)
+    .filter((node) => {
+      const { value } = node;
 
-const getIdFromObj = (o: {}) => {
-  const objStr = JSON.stringify(o);
-  return crypto.createHash("md5").update(objStr).digest("hex");
-};
+      const isExportedType =
+        isTSExport(value) && value.exportKind && value.exportKind === "type";
 
-export const cleanNode = (node: AstNode) => {
-  let cleanNode = {};
-  eachField(node, (name, value) => {
-    let cleanValue;
-    if (typeof value === "object") {
-      // Copy object
-      cleanValue = removeTokensField({ ...value });
+      const isTSNode = value.type.startsWith("TS");
+
+      return isExportedType || isTSNode;
+    })
+    .forEach((nodePath) => {
+      try {
+        nodePath.prune();
+      } catch (_) {
+        // failing to repair node relationships can *probably* be ignored
+      }
+    });
+  const src = collection.toSource();
+
+  // We don't care how it's formatted, as long as it's formatted the same
+  // Though we do give up any possibility to get a halfway useful line number,
+  // but that's already out the window anyway since type declarationss can
+  // push everything around
+  return prettier.format(src, { parser: "babel-ts" });
+}
+
+export enum DiffType {
+  Same = "same",
+  Removed = "removed",
+  Added = "added",
+}
+
+export interface DiffResult {
+  type: DiffType;
+  raw: string;
+}
+
+function parseDiff(changes: Diff.Change[]): DiffResult[] {
+  return changes.map((change) => {
+    const isWhitespaceChange = change.value.trim() === "";
+
+    if (change.added && !isWhitespaceChange) {
+      return {
+        type: DiffType.Added,
+        raw: change.value,
+      };
+    } else if (change.removed && !isWhitespaceChange) {
+      return {
+        type: DiffType.Removed,
+        raw: change.value,
+      };
     } else {
-      cleanValue = removeTokensField(value);
+      return {
+        type: DiffType.Same,
+        raw: change.value,
+      };
     }
-
-    cleanNode[name] = cleanValue;
   });
-  return removeUncomparedFields(cleanNode);
-};
+}
 
-const getNodeWithId = (node: Node): NodeWithId => {
-  const clonedNode = removeTokensField({ ...node });
-  const clonedLoc = get(node, "loc");
-  const cleanedNode = cleanNode(clonedNode);
-
-  const id = getIdFromObj(cleanedNode);
-
-  return {
-    loc: clonedLoc,
-    ...node,
-    id,
-  };
-};
-
-function parse(src: string, comparisonSrc: string): utils.DifferenceResult {
+function parse(src: string, comparisonSrc: string): DiffResult[] {
   const j = jscodeshift.withParser(getParser("ts"));
 
   const ast = j(src);
   const comparisonAst = j(comparisonSrc);
 
-  const makeMapOfNodes = (collection: Collection<any>): NodeMap => {
-    const map = new Map();
-    collection
-      .nodes()[0]
-      .program.body.filter((node) => {
-        if (!node) {
-          return false;
-        }
-        console.log(node);
-        // Ignore Typescript related stuff
-        if (node.type.startsWith("TS") || node.exportKind === "type") {
-          return false;
-        }
-        return true;
-      })
-      .forEach((p) => {
-        const node = getNodeWithId(p);
-        map.set(node.id, node);
-      });
-    return map;
-  };
+  const cleanedSrc = getCleanedSource(ast, j);
+  const cleanedComparisonSrc = getCleanedSource(comparisonAst, j);
 
-  const astIdsMap = makeMapOfNodes(ast);
-  const comaprisonAstIdsMap = makeMapOfNodes(comparisonAst);
+  // Comparison comes first here
+  const changes = Diff.diffLines(cleanedComparisonSrc, cleanedSrc, {
+    ignoreCase: false,
+    ignoreWhitespace: true,
+  });
+  const diffResult = parseDiff(changes);
 
-  const differences = utils.findDifferenceInMaps(
-    astIdsMap,
-    comaprisonAstIdsMap
-  );
-
-  return differences;
+  return diffResult;
 }
 
 export default parse;

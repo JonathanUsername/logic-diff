@@ -3,8 +3,9 @@ import { FileInfo, API } from "jscodeshift";
 import simpleGit from "simple-git";
 import { readFileSync } from "fs";
 import { Options } from "./runner";
-import { fileReport } from "./reporter";
-import parse from "./parser";
+import parse, { DiffType } from "./parser";
+import report from "./report";
+import * as utils from "./utils";
 
 const stripExtension = (path: string) =>
   path.replace(RegExp(`${extname(path)}$`), "");
@@ -44,5 +45,6 @@ export default async (fileInfo: FileInfo, api: API, options: Options) => {
 
   const differences = parse(fileInfo.source, comparisonSrc);
 
-  fileReport(differences, originalPath, comparisonPath, api, options);
+  // Because we're using print: true, it will log the returned string
+  return report(differences, originalPath, api, options);
 };

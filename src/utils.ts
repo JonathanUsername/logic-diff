@@ -1,6 +1,11 @@
 import forEach from "lodash.foreach";
 import unset from "lodash.unset";
-import { NodeWithId, NodeMap } from "./parser";
+import { NodeWithId, NodeMap, DiffResult, DiffType } from "./parser";
+
+export const differs = (diff: DiffResult) =>
+  [DiffType.Added, DiffType.Removed].includes(diff.type);
+
+export const sum = (arr) => arr.reduce((sum, i) => sum + i, 0);
 
 export const omitNested = <T extends Object>(obj: T, paths: string[]): T => {
   forEach(paths, function (omitProperty) {

@@ -2,13 +2,13 @@ import Runner from "jscodeshift/src/Runner";
 import { join, resolve } from "path";
 import { UserOptions } from "./cli";
 import glob from "glob";
-import reporter from "./reporter";
 
 export type Options = UserOptions & {
   dry: true;
   parser: "ts";
   verbose: number;
   silent: boolean;
+  print: boolean;
 };
 
 export default async function runner(userOptions: UserOptions) {
@@ -20,7 +20,7 @@ export default async function runner(userOptions: UserOptions) {
     ...userOptions,
     dry: true,
     parser: "ts",
+    print: true,
   };
-  const resp = await Runner.run(transformPath, paths, options);
-  reporter(resp);
+  await Runner.run(transformPath, paths, options);
 }

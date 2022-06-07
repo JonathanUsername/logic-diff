@@ -9,6 +9,7 @@ export type UserOptions = {
   srcFilePath?: string;
   verbose: number;
   silent: boolean;
+  diffContext: number;
 };
 
 let argv = yargs
@@ -49,6 +50,13 @@ let argv = yargs
         require: false,
         default: false,
       });
+      yargs.option("diffContext", {
+        type: "number",
+        describe: `Number of lines for context of the diff, like -C in grep`,
+        alias: "C",
+        require: false,
+        default: 2,
+      });
       yargs.demandCommand(1);
     }
   )
@@ -62,15 +70,17 @@ const {
   srcFilePath,
   silent,
   verbose,
+  diffContext,
 } = argv;
 
 const args = {
+  compareCommit: commitSha,
   paths,
   ext,
-  compareCommit: commitSha,
   srcFilePath,
   silent,
   verbose,
+  diffContext,
 } as UserOptions;
 
 // Debug values:
