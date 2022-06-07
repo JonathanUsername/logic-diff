@@ -7,5 +7,5 @@
     "esModuleInterop": true,
     "moduleResolution": "node"
   },
-  "exclude": ["./spec"]
+  "exclude": ["./spec/**/*"]
 }

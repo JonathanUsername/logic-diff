@@ -55,7 +55,7 @@ let argv = yargs
         describe: `Number of lines for context of the diff, like -C in grep`,
         alias: "C",
         require: false,
-        default: 2,
+        default: 3,
       });
       yargs.demandCommand(1);
     }
@@ -83,12 +83,11 @@ const args = {
   diffContext,
 } as UserOptions;
 
-// Debug values:
-// compareCommit: "9a1adc39117b7ead41a1d38173b22cdc224faefa",
-// srcFilePath: join(__dirname, "..", "/spec/foo2.ts"),
-
 async function main() {
-  const res = await runner(args);
+  const { changedFiles } = await runner(args);
+  if (changedFiles.length) {
+    process.exit(1);
+  }
 }
 
 main();

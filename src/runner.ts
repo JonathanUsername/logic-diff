@@ -22,5 +22,9 @@ export default async function runner(userOptions: UserOptions) {
     parser: "ts",
     print: true,
   };
-  await Runner.run(transformPath, paths, options);
+  const { stats } = await Runner.run(transformPath, paths, options);
+
+  return {
+    changedFiles: Object.keys(stats),
+  };
 }

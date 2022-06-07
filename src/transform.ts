@@ -1,11 +1,9 @@
 import { extname, relative } from "path";
 import { FileInfo, API } from "jscodeshift";
 import simpleGit from "simple-git";
-import { readFileSync } from "fs";
 import { Options } from "./runner";
-import parse, { DiffType } from "./parser";
+import parse from "./parser";
 import report from "./report";
-import * as utils from "./utils";
 
 const stripExtension = (path: string) =>
   path.replace(RegExp(`${extname(path)}$`), "");
@@ -15,28 +13,24 @@ export default async (fileInfo: FileInfo, api: API, options: Options) => {
   const originalPath = path;
 
   let comparisonSrc = "";
-  let comparisonPath = "";
 
-  if (options.srcFilePath) {
-    comparisonPath = options.srcFilePath;
-    comparisonSrc = readFileSync(options.srcFilePath).toString();
-  } else {
-    const gitRoot = await simpleGit().revparse(["--show-toplevel"]);
-    let gitRelativePath = relative(gitRoot, path);
+  const gitRoot = await simpleGit().revparse(["--show-toplevel"]);
+  const gitRelativePath = relative(gitRoot, path);
 
-    if (options.ext) {
-      gitRelativePath = stripExtension(gitRelativePath) + "." + options.ext;
-    }
+  let gitRelativePathWithExtension = gitRelativePath;
+  if (options.ext) {
+    gitRelativePathWithExtension =
+      stripExtension(gitRelativePath) + "." + options.ext;
+  }
 
-    comparisonPath = `${options.compareCommit}:${gitRelativePath}`;
+  const comparisonPath = `${options.compareCommit}:${gitRelativePathWithExtension}`;
 
-    try {
-      comparisonSrc = await simpleGit().catFile(["--textconv", comparisonPath]);
-    } catch (e) {
-      throw new Error(
-        `No source file to compare with for ${originalPath} - ${e}`
-      );
-    }
+  try {
+    comparisonSrc = await simpleGit().catFile(["--textconv", comparisonPath]);
+  } catch (e) {
+    throw new Error(
+      `No source file to compare with for ${originalPath} - ${e}`
+    );
   }
 
   if (!comparisonSrc || !comparisonPath) {
@@ -46,5 +40,5 @@ export default async (fileInfo: FileInfo, api: API, options: Options) => {
   const differences = parse(fileInfo.source, comparisonSrc);
 
   // Because we're using print: true, it will log the returned string
-  return report(differences, originalPath, api, options);
+  return report(differences, originalPath, gitRelativePath, api, options);
 };

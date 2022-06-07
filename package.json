@@ -21,7 +21,7 @@
   "author": "Jonathan King",
   "license": "ISC",
   "dependencies": {
-    "chalk": "^5.0.1",
+    "chalk": "4",
     "diff": "^5.1.0",
     "evcodeshift": "^2.3.0",
     "glob": "^8.0.3",
