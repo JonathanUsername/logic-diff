@@ -1,6 +1,6 @@
 {
   "name": "@jonathanusername/ts-safe-diff",
-  "version": "1.0.2",
+  "version": "1.0.5",
   "description": "Ensure no logic changes in git diff",
   "main": "./dist/cli.js",
   "bin": {
@@ -15,7 +15,6 @@
     "dev": "ts-node -T ./src/cli.ts",
     "clean": "rimraf ./dist/ ./exec/",
     "build": "npm run clean && tsc",
-    "publish": "npm i && npm run build && npm publish --access public",
     "bundle": "npm run build && pkg . --out-dir ./exec/"
   },
   "author": "Jonathan King",
