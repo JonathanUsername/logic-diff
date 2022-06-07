@@ -1,17 +1,21 @@
 {
-  "name": "ts-safe-diff",
-  "version": "1.0.0",
+  "name": "@jonathanusername/ts-safe-diff",
+  "version": "1.0.2",
   "description": "Ensure no logic changes in git diff",
-  "main": "./dist/index.js",
-  "bin": "./dist/cli.js",
+  "main": "./dist/cli.js",
+  "bin": {
+    "ts-safe-diff": "dist/cli.js"
+  },
   "files": [
     "dist/**/*",
     "!dist/**/*.test.js"
   ],
   "scripts": {
+    "test": "jest",
     "dev": "ts-node -T ./src/cli.ts",
     "clean": "rimraf ./dist/ ./exec/",
     "build": "npm run clean && tsc",
+    "publish": "npm i && npm run build && npm publish --access public",
     "bundle": "npm run build && pkg . --out-dir ./exec/"
   },
   "author": "Jonathan King",
@@ -19,7 +23,9 @@
   "dependencies": {
     "glob": "^8.0.3",
     "jscodeshift": "^0.13.1",
-    "lodash": "^4.17.21",
+    "lodash.foreach": "^4.5.0",
+    "lodash.get": "^4.4.2",
+    "lodash.unset": "^4.5.2",
     "pkg": "^5.7.0",
     "rimraf": "^3.0.2",
     "simple-git": "^3.7.1",
@@ -28,10 +34,31 @@
     "yargs": "^17.5.1"
   },
   "devDependencies": {
-    "@types/lodash": "^4.14.182",
-    "@types/yargs": "^17.0.10",
+    "@types/jest": "^28.1.1",
     "@types/jscodeshift": "^0.11.5",
     "@types/node": "^17.0.38",
-    "jscodeshift-debug": "^1.1.1"
+    "@types/yargs": "^17.0.10",
+    "jest": "^28.1.1",
+    "jscodeshift-debug": "^1.1.1",
+    "ts-jest": "^28.0.4"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/JonathanUsername/logic-diff.git"
+  },
+  "bugs": {
+    "url": "https://github.com/JonathanUsername/logic-diff/issues"
+  },
+  "homepage": "https://github.com/JonathanUsername/logic-diff#readme",
+  "jest": {
+    "transform": {
+      ".(ts|tsx)": "ts-jest"
+    },
+    "testRegex": "(/__tests__/.*|\\.(test|spec))\\.(ts|tsx|js)$",
+    "moduleFileExtensions": [
+      "ts",
+      "tsx",
+      "js"
+    ]
   }
 }

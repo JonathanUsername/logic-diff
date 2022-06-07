@@ -5,6 +5,10 @@ import * as utils from "./utils";
 const sum = (arr) => arr.reduce((sum, i) => sum + i, 0);
 
 export default function (resp) {
+  if (!resp) {
+    console.error("Error: No response from runner!");
+    return;
+  }
   const { stats, error, ok, nochange, skip } = resp;
   const totalFiles = sum([error, ok, nochange, skip]);
   const locs = Object.keys(stats);
@@ -52,7 +56,7 @@ export function fileReport(
     });
 
     // Debugging
-    if (diffs.trim().length === 0) {
+    if (diffs.trim().length === 0 || options.verbose > 1) {
       console.log(file1Differences, file2Differences);
     }
   }

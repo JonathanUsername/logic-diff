@@ -1,5 +1,6 @@
+#!/usr/bin/env node
 import runner from "./runner";
-import yargs from "yargs";
+import yargs, { string } from "yargs";
 
 export type UserOptions = {
   paths: string[];
@@ -10,13 +11,14 @@ export type UserOptions = {
   silent: boolean;
 };
 
-let argv = yargs(process.argv.slice(2))
+let argv = yargs
   .usage("Usage: ts-safe-diff <commitSha> --paths src/foo/*.ts src/bar.ts")
   .command(
-    ["sha", "$0"],
+    ["$0"],
     "Diff all files matching a path with the same files at a given commit SHA",
     (yargs) => {
       yargs.positional("commitSha", {
+        type: "string",
         describe: "The commit to diff all files against",
         require: true,
       });

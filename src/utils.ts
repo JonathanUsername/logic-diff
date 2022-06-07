@@ -1,88 +1,12 @@
-import _ from "lodash";
-import { ASTPath, Node } from "jscodeshift";
-import { eachField } from "ast-types";
-import crypto from "crypto";
+import forEach from "lodash.foreach";
+import unset from "lodash.unset";
+import { NodeWithId, NodeMap } from "./parser";
 
-export type NodeWithId = AstNode & {
-  id: string;
-};
-export type AstNode = ASTPath<Node>["node"];
-export type NodeMap = Map<string, NodeWithId>;
-
-const unCircularLoc = <T extends AstNode>(o: T): T => {
-  if (!o) {
-    return o;
-  }
-
-  delete o["tokens"];
-
-  Object.entries(o).forEach(([k, v]) => {
-    if (typeof v === "object") {
-      const out = unCircularLoc(v);
-      o[k] = out;
-    }
-  });
-  return o;
-};
-
-const omitNested = <T extends Object>(obj: T, paths: string[]): T => {
-  _.forEach(paths, function (omitProperty) {
-    _.unset(obj, omitProperty);
+export const omitNested = <T extends Object>(obj: T, paths: string[]): T => {
+  forEach(paths, function (omitProperty) {
+    unset(obj, omitProperty);
   });
   return obj;
-};
-
-const removeUncomparedFields = <T extends Object>(obj: T): T => {
-  if (!obj) {
-    return obj;
-  }
-  Object.entries(obj).forEach(([key, value]) => {
-    if (!value) {
-      return;
-    }
-    if (Array.isArray(value)) {
-      obj[key] = value.map(removeUncomparedFields);
-    }
-    if (typeof value === "object") {
-      obj[key] = removeUncomparedFields(value);
-    }
-  });
-  return omitNested(obj, [
-    // Location etc.
-    "start",
-    "end",
-    "extra",
-    "loc",
-    "regex",
-    // Comments
-    "trailingComments",
-    "leadingComments",
-    "comments",
-    // Type annotations
-    "typeAnnotation",
-    "declaration",
-  ]);
-};
-
-const getIdFromObj = (o: {}) => {
-  const objStr = JSON.stringify(o);
-  return crypto.createHash("md5").update(objStr).digest("hex");
-};
-
-const cleanNode = (node: AstNode) => {
-  let cleanNode = {};
-  eachField(node, (name, value) => {
-    let cleanValue;
-    if (typeof value === "object") {
-      // Copy object
-      cleanValue = unCircularLoc({ ...value });
-    } else {
-      cleanValue = unCircularLoc(value);
-    }
-
-    cleanNode[name] = cleanValue;
-  });
-  return removeUncomparedFields(cleanNode);
 };
 
 export const setDifference = (a: Set<string>, b: Set<string>) => {
@@ -135,17 +59,3 @@ export const mapLocs = (fileName: string, arr: NodeWithId[]) =>
       .filter((i) => !!i.loc && !(Object.keys(i.loc).length === 0))
       .map((i) => `${fileName}:${i.loc.start.line}:${i.loc.start.column}`)
   );
-
-export const getNodeWithId = (node: Node): NodeWithId => {
-  const clonedNode = { ...node };
-  const clonedLoc = _.get(node, "loc");
-  const cleanedNode = cleanNode(clonedNode);
-
-  const id = getIdFromObj(cleanedNode);
-
-  return {
-    loc: clonedLoc,
-    ...node,
-    id,
-  };
-};

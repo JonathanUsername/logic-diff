@@ -1,11 +1,10 @@
-import _ from "lodash";
 import { extname, relative } from "path";
-import { FileInfo, API, Collection } from "jscodeshift";
+import { FileInfo, API } from "jscodeshift";
 import simpleGit from "simple-git";
 import { readFileSync } from "fs";
-import * as utils from "./utils";
 import { Options } from "./runner";
 import { fileReport } from "./reporter";
+import parse from "./parser";
 
 const stripExtension = (path: string) =>
   path.replace(RegExp(`${extname(path)}$`), "");
@@ -43,38 +42,7 @@ export default async (fileInfo: FileInfo, api: API, options: Options) => {
     throw new Error(`Could not find source for comparison for ${originalPath}`);
   }
 
-  const j = api.jscodeshift;
-  const ast = j(fileInfo.source);
-  const comparisonAst = j(comparisonSrc);
-
-  const makeMapOfNodes = (collection: Collection<any>): utils.NodeMap => {
-    const map = new Map();
-    collection
-      .nodes()[0]
-      .program.body.filter((node) => {
-        if (!node) {
-          return false;
-        }
-        // Ignore Typescript related stuff
-        if (node.type.startsWith("TS") || node.exportKind === "type") {
-          return false;
-        }
-        return true;
-      })
-      .forEach((p) => {
-        const node = utils.getNodeWithId(p);
-        map.set(node.id, node);
-      });
-    return map;
-  };
-
-  const astIdsMap = makeMapOfNodes(ast);
-  const comaprisonAstIdsMap = makeMapOfNodes(comparisonAst);
-
-  const differences = utils.findDifferenceInMaps(
-    astIdsMap,
-    comaprisonAstIdsMap
-  );
+  const differences = parse(fileInfo.source, comparisonSrc);
 
   fileReport(differences, originalPath, comparisonPath, api, options);
 };

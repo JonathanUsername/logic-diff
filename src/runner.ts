@@ -1,4 +1,4 @@
-import { run as jscodeshift } from "jscodeshift/src/Runner";
+import Runner from "jscodeshift/src/Runner";
 import { join, resolve } from "path";
 import { UserOptions } from "./cli";
 import glob from "glob";
@@ -12,7 +12,7 @@ export type Options = UserOptions & {
 };
 
 export default async function runner(userOptions: UserOptions) {
-  const transformPath = join(__dirname, "transform.ts");
+  const transformPath = glob.sync(join(__dirname, "transform") + "*")[0];
   const getPath = (globStr) =>
     glob.sync(globStr).map((relativePath) => resolve(relativePath));
   const paths = userOptions.paths.map(getPath).flat();
@@ -21,6 +21,6 @@ export default async function runner(userOptions: UserOptions) {
     dry: true,
     parser: "ts",
   };
-  const resp = await jscodeshift(transformPath, paths, options);
+  const resp = await Runner.run(transformPath, paths, options);
   reporter(resp);
 }
