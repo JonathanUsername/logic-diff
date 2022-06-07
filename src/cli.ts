@@ -2,53 +2,73 @@ import runner from "./runner";
 import yargs from "yargs";
 
 export type UserOptions = {
-  path: string;
+  paths: string[];
   compareCommit?: string;
   ext?: string;
   srcFilePath?: string;
+  verbose: number;
+  silent: boolean;
 };
 
 let argv = yargs(process.argv.slice(2))
-  .usage("Usage: <path> [commitSha] --srcFilePath [srcFilePath]")
-  .alias("f", "srcFilepath")
-  .describe("f", "Use a file to diff against instead of a commit")
-  .command("$0", "Diff all files, given a path, recursively.", (yargs) => {
-    yargs.positional("path", {
-      describe: "A glob to start the runner with, e.g. src/**/*.ts",
-      require: true,
-    });
-    yargs.positional("commitSha", {
-      describe: "The commit to diff all files against",
-      require: false,
-    });
-    yargs.option("ext", {
-      type: "string",
-      describe: `If the file you want to compare against had a different extension, use this to specify it, e.g. 'js'`,
-      alias: "x",
-      require: false,
-    });
-    yargs.option("verbose", {
-      type: "number",
-      describe: `Passed to jscodeshift`,
-      alias: "v",
-      require: false,
-    });
-    yargs.demandCommand(1);
-  })
+  .usage("Usage: ts-safe-diff <commitSha> --paths src/foo/*.ts src/bar.ts")
+  .command(
+    ["sha", "$0"],
+    "Diff all files matching a path with the same files at a given commit SHA",
+    (yargs) => {
+      yargs.positional("commitSha", {
+        describe: "The commit to diff all files against",
+        require: true,
+      });
+      yargs.option("paths", {
+        type: "array",
+        describe:
+          "A series of globs to start the runner with, e.g. src/**/*.ts",
+        require: true,
+        alias: "p",
+      });
+      yargs.option("ext", {
+        type: "string",
+        describe: `If the file you want to compare against had a different extension, use this to specify it, e.g. 'js'`,
+        alias: "x",
+        require: false,
+      });
+      yargs.option("verbose", {
+        type: "number",
+        describe: `Passed to jscodeshift`,
+        alias: "v",
+        require: false,
+        default: 0,
+      });
+      yargs.option("silent", {
+        type: "boolean",
+        describe: `Passed to jscodeshift`,
+        alias: "s",
+        require: false,
+        default: false,
+      });
+      yargs.demandCommand(1);
+    }
+  )
   .help()
   .parseSync();
 
 const {
-  _: [path, commitSha],
+  _: [commitSha],
+  paths,
   ext,
   srcFilePath,
+  silent,
+  verbose,
 } = argv;
 
 const args = {
-  path,
+  paths,
   ext,
   compareCommit: commitSha,
   srcFilePath,
+  silent,
+  verbose,
 } as UserOptions;
 
 // Debug values:
@@ -57,7 +77,6 @@ const args = {
 
 async function main() {
   const res = await runner(args);
-  console.log(res);
 }
 
 main();

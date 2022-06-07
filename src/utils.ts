@@ -95,7 +95,7 @@ const difference = (a: NodeMap, b: NodeMap) => {
   return new Set([...a.keys()].filter((x) => !b.has(x)));
 };
 
-type DifferenceResult = {
+export type DifferenceResult = {
   map1: NodeWithId[];
   map2: NodeWithId[];
 };

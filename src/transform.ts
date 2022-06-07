@@ -4,12 +4,13 @@ import { FileInfo, API, Collection } from "jscodeshift";
 import simpleGit from "simple-git";
 import { readFileSync } from "fs";
 import * as utils from "./utils";
-import { UserOptions } from "./cli";
+import { Options } from "./runner";
+import { fileReport } from "./reporter";
 
 const stripExtension = (path: string) =>
   path.replace(RegExp(`${extname(path)}$`), "");
 
-export default async (fileInfo: FileInfo, api: API, options: UserOptions) => {
+export default async (fileInfo: FileInfo, api: API, options: Options) => {
   let { path } = fileInfo;
   const originalPath = path;
 
@@ -29,11 +30,17 @@ export default async (fileInfo: FileInfo, api: API, options: UserOptions) => {
 
     comparisonPath = `${options.compareCommit}:${gitRelativePath}`;
 
-    comparisonSrc = await simpleGit().catFile(["--textconv", comparisonPath]);
+    try {
+      comparisonSrc = await simpleGit().catFile(["--textconv", comparisonPath]);
+    } catch (e) {
+      throw new Error(
+        `No source file to compare with for ${originalPath} - ${e}`
+      );
+    }
   }
 
   if (!comparisonSrc || !comparisonPath) {
-    throw new Error("Could not find source for comparison");
+    throw new Error(`Could not find source for comparison for ${originalPath}`);
   }
 
   const j = api.jscodeshift;
@@ -68,25 +75,6 @@ export default async (fileInfo: FileInfo, api: API, options: UserOptions) => {
     astIdsMap,
     comaprisonAstIdsMap
   );
-  const file1Differences = differences.map1;
-  const file2Differences = differences.map2;
 
-  if (file1Differences.length === 0 && file2Differences.length === 0) {
-    api.report("No changes to logic");
-  } else {
-    const file1Locs = utils.mapLocs(originalPath, file1Differences);
-    const file2Locs = utils.mapLocs(comparisonPath, file2Differences);
-    const diffs = ["\n", file1Locs.join("\n"), "\n", file2Locs.join("\n")].join(
-      ""
-    );
-    api.report(`Found AST differences: ${diffs}\n`);
-    [...file1Locs, ...file2Locs].forEach((loc) => {
-      api.stats(loc, 1);
-    });
-
-    // Debugging
-    if (diffs.trim().length === 0) {
-      console.log(file1Differences, file2Differences);
-    }
-  }
+  fileReport(differences, originalPath, comparisonPath, api, options);
 };
